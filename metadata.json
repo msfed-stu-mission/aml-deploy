@@ -1,0 +1,12 @@
+{
+    "$schema": "https://aka.ms/azure-quickstart-templates-metadata-schema#",
+    "type": "QuickStart",
+    "itemDisplayName": "Secure Azure Machine Learning deployments in Azure Gov",
+    "description": "This set of Bicep templates demonstrates how to set up Azure Machine Learning end-to-end in a secure set up. This reference implementation includes the AzureML workspace, a configurable compute cluster, compute instance, private AKS cluster, and (optional) Synapse Spark pool.",
+    "summary": "Bicep scripts to deploy a fully functional Azure Machine Learning workspace in Azure Government and USSec.",
+    "githubUsername": "jrdodson",
+    "dateUpdated": "2024-01-16",
+    "environments": [
+      "AzureUSGovernment"
+    ]
+  }
