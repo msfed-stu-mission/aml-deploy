@@ -10,122 +10,128 @@ param location string = resourceGroup().location
 param tags object = {}
 
 @description('Virtual network address prefix')
-param vnetAddressPrefix string = '192.168.0.0/16'
+param p_vnetAddressPrefix string = '192.168.0.0/16'
 
 @description('Training subnet address prefix')
-param trainingSubnetPrefix string = '192.168.0.0/24'
+param p_trainingSubnetPrefix string = '192.168.0.0/24'
 
 @description('Scoring subnet address prefix')
-param scoringSubnetPrefix string = '192.168.1.0/24'
+param p_scoringSubnetPrefix string = '192.168.1.0/24'
 
 @description('Bastion subnet address prefix')
-param azureBastionSubnetPrefix string = '192.168.250.0/27'
+param p_azureBastionSubnetPrefix string = '192.168.250.0/27'
 
 @description('Deploy a Bastion jumphost to access the network-isolated environment?')
-param deployJumphost bool = true
+param p_deployJumphost bool = true
 
 @description('Jumphost virtual machine username')
-param dsvmJumpboxUsername string
+param p_dsvmJumpboxUsername string
 
 @secure()
 @minLength(8)
 @description('Jumphost virtual machine password')
-param dsvmJumpboxPassword string
+param p_dsvmJumpboxPassword string
 
 @description('Enable public IP for Azure Machine Learning compute nodes')
-param amlComputePublicIp bool = true
+param p_amlComputePublicIp bool = true
 
 @description('VM size for the default compute cluster')
-param amlComputeDefaultVmSize string = 'Standard_DS3_v2'
+param p_amlComputeDefaultVmSize string = 'Standard_DS3_v2'
+
+@description('Name of the training subnet for cluster access')
+param p_trainingSubnetName string = 'SNET-Train'
+
+@description('Name of the scoring subnet for inference endpoints')
+param p_scoringSubnetName string = 'SNET-Score'
 
 // Variables
-var name = toLower('${prefix}')
+var v_name = toLower('${prefix}')
 
 // Create a short, unique suffix, that will be unique to each resource group
-var uniqueSuffix = substring(uniqueString(resourceGroup().id), 0, 4)
+var v_uniqueSuffix = substring(uniqueString(resourceGroup().id), 0, 4)
 
 // Virtual network and network security group
-module nsg 'modules/nsg.bicep' = { 
-  name: 'nsg-${name}-${uniqueSuffix}-deployment'
+module nsg 'modules/network/nsg.bicep' = { 
+  name: 'nsg-${v_name}-${v_uniqueSuffix}-deployment'
   params: {
     location: location
     tags: tags 
-    nsgName: 'nsg-${name}-${uniqueSuffix}'
+    p_nsgName: 'nsg-${v_name}-${v_uniqueSuffix}'
   }
 }
 
-module vnet 'modules/vnet.bicep' = { 
-  name: 'vnet-${name}-${uniqueSuffix}-deployment'
+module vnet 'modules/network/vnet.bicep' = { 
+  name: 'vnet-${v_name}-${v_uniqueSuffix}-deployment'
   params: {
     location: location
-    virtualNetworkName: 'vnet-${name}-${uniqueSuffix}'
-    networkSecurityGroupId: nsg.outputs.networkSecurityGroup
-    vnetAddressPrefix: vnetAddressPrefix
-    trainingSubnetPrefix: trainingSubnetPrefix
-    scoringSubnetPrefix: scoringSubnetPrefix
+    p_virtualNetworkName: 'vnet-${v_name}-${v_uniqueSuffix}'
+    p_networkSecurityGroupId: nsg.outputs.networkSecurityGroup
+    p_vnetAddressPrefix: p_vnetAddressPrefix
+    p_trainingSubnetPrefix: p_trainingSubnetPrefix
+    p_scoringSubnetPrefix: p_scoringSubnetPrefix
     tags: tags
   }
 }
 
 // Dependent resources for the Azure Machine Learning workspace
-module keyvault 'modules/keyvault.bicep' = {
-  name: 'kv-${name}-${uniqueSuffix}-deployment'
+module keyvault 'modules/base/vault.bicep' = {
+  name: 'kv-${v_name}-${v_uniqueSuffix}-deployment'
   params: {
     location: location
-    keyvaultName: 'kv-${name}-${uniqueSuffix}'
-    keyvaultPleName: 'ple-${name}-${uniqueSuffix}-kv'
-    subnetId: '${vnet.outputs.id}/subnets/snet-training'
-    virtualNetworkId: vnet.outputs.id
+    p_keyvaultName: 'kv-${v_name}-${v_uniqueSuffix}'
+    p_keyvaultPleName: 'ple-${v_name}-${v_uniqueSuffix}-kv'
+    p_subnetId: '${vnet.outputs.id}/subnets/${p_trainingSubnetName}'
+    p_virtualNetworkId: vnet.outputs.id
     tags: tags
   }
 }
 
-module storage 'modules/storage.bicep' = {
-  name: 'st${name}${uniqueSuffix}-deployment'
+module storage 'modules/base/storage.bicep' = {
+  name: 'st${v_name}${v_uniqueSuffix}-deployment'
   params: {
     location: location
-    storageName: 'st${name}${uniqueSuffix}'
-    storagePleBlobName: 'ple-${name}-${uniqueSuffix}-st-blob'
-    storagePleFileName: 'ple-${name}-${uniqueSuffix}-st-file'
+    p_storageName: 'st${v_name}${v_uniqueSuffix}'
+    p_storagePleBlobName: 'ple-${v_name}-${v_uniqueSuffix}-st-blob'
+    p_storagePleFileName: 'ple-${v_name}-${v_uniqueSuffix}-st-file'
     storageSkuName: 'Standard_LRS'
-    subnetId: '${vnet.outputs.id}/subnets/snet-training'
-    virtualNetworkId: vnet.outputs.id
+    p_subnetId: '${vnet.outputs.id}/subnets/${p_trainingSubnetName}'
+    p_virtualNetworkId: vnet.outputs.id
     tags: tags
   }
 }
 
-module containerRegistry 'modules/containerregistry.bicep' = {
-  name: 'cr${name}${uniqueSuffix}-deployment'
+module containerRegistry 'modules/base/acr.bicep' = {
+  name: 'cr${v_name}${v_uniqueSuffix}-deployment'
   params: {
     location: location
-    containerRegistryName: 'cr${name}${uniqueSuffix}'
-    containerRegistryPleName: 'ple-${name}-${uniqueSuffix}-cr'
-    subnetId: '${vnet.outputs.id}/subnets/snet-training'
-    virtualNetworkId: vnet.outputs.id
+    p_containerRegistryName: 'cr${v_name}${v_uniqueSuffix}'
+    p_containerRegistryPleName: 'ple-${v_name}-${v_uniqueSuffix}-cr'
+    p_subnetId: '${vnet.outputs.id}/subnets/${p_trainingSubnetName}'
+    p_virtualNetworkId: vnet.outputs.id
     tags: tags
   }
 }
 
 module applicationInsights 'modules/applicationinsights.bicep' = {
-  name: 'appi-${name}-${uniqueSuffix}-deployment'
+  name: 'appi-${p_name}-${p_uniqueSuffix}-deployment'
   params: {
-    location: location
-    applicationInsightsName: 'appi-${name}-${uniqueSuffix}'
-    logAnalyticsWorkspaceName: 'ws-${name}-${uniqueSuffix}'
-    tags: tags
+    location: p_location
+    applicationInsightsName: 'appi-${p_name}-${p_uniqueSuffix}'
+    logAnalyticsWorkspaceName: 'ws-${p_name}-${p_uniqueSuffix}'
+    tags: p_tags
   }
 }
 
 module azuremlWorkspace 'modules/base/workspace.bicep' = {
-  name: 'mlw-${name}-${uniqueSuffix}-deployment'
+  name: 'mlw-${p_name}-${p_uniqueSuffix}-deployment'
   params: {
     // workspace organization
-    machineLearningName: 'mlw-${name}-${uniqueSuffix}'
+    machineLearningName: 'mlw-${p_name}-${p_uniqueSuffix}'
     machineLearningFriendlyName: 'Private link endpoint sample workspace'
     machineLearningDescription: 'This is an example workspace having a private link endpoint.'
-    location: location
-    prefix: name
-    tags: tags
+    location: p_location
+    prefix: p_name
+    tags: p_tags
 
     // dependent resources
     applicationInsightsId: applicationInsights.outputs.applicationInsightsId
@@ -134,16 +140,16 @@ module azuremlWorkspace 'modules/base/workspace.bicep' = {
     storageAccountId: storage.outputs.storageId
 
     // networking
-    subnetId: '${vnet.outputs.id}/subnets/snet-training'
-    computeSubnetId: '${vnet.outputs.id}/subnets/snet-training'
-    aksSubnetId: '${vnet.outputs.id}/subnets/snet-scoring'
+    subnetId: '${vnet.outputs.id}/subnets/${p_trainingSubnetName}'
+    computeSubnetId: '${vnet.outputs.id}/subnets/${p_trainingSubnetName}'
+    aksSubnetId: '${vnet.outputs.id}/subnets/${p_scoringSubnetName}'
     virtualNetworkId: vnet.outputs.id
-    machineLearningPleName: 'ple-${name}-${uniqueSuffix}-mlw'
+    machineLearningPleName: 'ple-${p_name}-${p_uniqueSuffix}-mlw'
 
     // compute
-    amlComputePublicIp: amlComputePublicIp
-    mlAksName: 'aks-${name}-${uniqueSuffix}'
-    vmSizeParam: amlComputeDefaultVmSize
+    amlComputePublicIp: p_amlComputePublicIp
+    mlAksName: 'aks-${p_name}-${p_uniqueSuffix}'
+    vmSizeParam: p_amlComputeDefaultVmSize
   }
   dependsOn: [
     keyvault

@@ -19,6 +19,12 @@ param p_trainingSubnetPrefix string = '192.168.0.0/24'
 @description('Scoring subnet address prefix')
 param p_scoringSubnetPrefix string = '192.168.1.0/24'
 
+@description('The name of the training subnet')
+param p_trainingSubnetName string = 'SNET-Train'
+
+@description('The name of the scoring subnet')
+param p_scoringSubnetName string = 'SNET-Score'
+
 resource virtualNetwork 'Microsoft.Network/virtualNetworks@2022-01-01' = {
   name: p_virtualNetworkName
   location: location
@@ -31,7 +37,7 @@ resource virtualNetwork 'Microsoft.Network/virtualNetworks@2022-01-01' = {
     }
     subnets: [
       { 
-        name: 'SNET-Train'
+        name: p_trainingSubnetName
         properties: {
           addressPrefix: p_trainingSubnetPrefix
           privateEndpointNetworkPolicies: 'Disabled'
@@ -42,7 +48,7 @@ resource virtualNetwork 'Microsoft.Network/virtualNetworks@2022-01-01' = {
         }
       }
       { 
-        name: 'SNET-Score'
+        name: p_scoringSubnetName
         properties: {
           addressPrefix: p_scoringSubnetPrefix
           privateEndpointNetworkPolicies: 'Disabled'
