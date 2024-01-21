@@ -24,14 +24,6 @@ param p_azureBastionSubnetPrefix string = '192.168.250.0/27'
 @description('Deploy a Bastion jumphost to access the network-isolated environment?')
 param p_deployJumphost bool = true
 
-@description('Jumphost virtual machine username')
-param p_dsvmJumpboxUsername string
-
-@secure()
-@minLength(8)
-@description('Jumphost virtual machine password')
-param p_dsvmJumpboxPassword string
-
 @description('Enable public IP for Azure Machine Learning compute nodes')
 param p_amlComputePublicIp bool = true
 
@@ -43,6 +35,9 @@ param p_trainingSubnetName string = 'SNET-Train'
 
 @description('Name of the scoring subnet for inference endpoints')
 param p_scoringSubnetName string = 'SNET-Score'
+
+@description('Name of the user-managed identity')
+param p_managedIdentityName string = 'aml-umi'
 
 // Variables
 var v_name = toLower('${prefix}')
@@ -73,7 +68,15 @@ module vnet 'modules/network/vnet.bicep' = {
   }
 }
 
-// Dependent resources for the Azure Machine Learning workspace
+module managedIdentity 'modules/base/identity.bicep' = {
+  name: 'managed-identity-${v_name}-${v_uniqueSuffix}-deployment'
+  params: {
+    p_managedIdentityName: p_managedIdentityName
+    location: location
+    tags: tags
+  }
+}
+
 module keyvault 'modules/base/vault.bicep' = {
   name: 'kv-${v_name}-${v_uniqueSuffix}-deployment'
   params: {
@@ -82,6 +85,7 @@ module keyvault 'modules/base/vault.bicep' = {
     p_keyvaultPleName: 'ple-${v_name}-${v_uniqueSuffix}-kv'
     p_subnetId: '${vnet.outputs.id}/subnets/${p_trainingSubnetName}'
     p_virtualNetworkId: vnet.outputs.id
+    p_managedIdentityName: managedIdentity.outputs.managedIdentityName
     tags: tags
   }
 }
@@ -96,6 +100,9 @@ module storage 'modules/base/storage.bicep' = {
     storageSkuName: 'Standard_LRS'
     p_subnetId: '${vnet.outputs.id}/subnets/${p_trainingSubnetName}'
     p_virtualNetworkId: vnet.outputs.id
+    p_keyVaultName: keyvault.outputs.keyvaultName
+    p_cmkKeyName: keyvault.outputs.cmkKeyName
+    p_managedIdentityName: managedIdentity.outputs.managedIdentityName
     tags: tags
   }
 }
@@ -112,44 +119,44 @@ module containerRegistry 'modules/base/acr.bicep' = {
   }
 }
 
-module applicationInsights 'modules/applicationinsights.bicep' = {
-  name: 'appi-${p_name}-${p_uniqueSuffix}-deployment'
+module applicationInsights 'modules/base/monitor.bicep' = {
+  name: 'appi-${v_name}-${v_uniqueSuffix}-deployment'
   params: {
-    location: p_location
-    applicationInsightsName: 'appi-${p_name}-${p_uniqueSuffix}'
-    logAnalyticsWorkspaceName: 'ws-${p_name}-${p_uniqueSuffix}'
-    tags: p_tags
+    location: location
+    p_applicationInsightsName: 'appi-${v_name}-${v_uniqueSuffix}'
+    p_logAnalyticsWorkspaceName: 'ws-${v_name}-${v_uniqueSuffix}'
+    tags: tags
   }
 }
 
 module azuremlWorkspace 'modules/base/workspace.bicep' = {
-  name: 'mlw-${p_name}-${p_uniqueSuffix}-deployment'
+  name: 'mlw-${v_name}-${v_uniqueSuffix}-deployment'
   params: {
     // workspace organization
-    machineLearningName: 'mlw-${p_name}-${p_uniqueSuffix}'
+    p_machineLearningName: 'mlw-${v_name}-${v_uniqueSuffix}'
     machineLearningFriendlyName: 'Private link endpoint sample workspace'
-    machineLearningDescription: 'This is an example workspace having a private link endpoint.'
-    location: p_location
-    prefix: p_name
-    tags: p_tags
+    p_machineLearningDescription: 'This is an example workspace having a private link endpoint.'
+    location: location
+    prefix: v_name
+    tags: tags
 
     // dependent resources
-    applicationInsightsId: applicationInsights.outputs.applicationInsightsId
-    containerRegistryId: containerRegistry.outputs.containerRegistryId
-    keyVaultId: keyvault.outputs.keyvaultId
-    storageAccountId: storage.outputs.storageId
+    p_applicationInsightsId: applicationInsights.outputs.applicationInsightsId
+    p_containerRegistryId: containerRegistry.outputs.containerRegistryId
+    p_keyVaultId: keyvault.outputs.keyvaultId
+    p_storageAccountId: storage.outputs.storageId
 
     // networking
-    subnetId: '${vnet.outputs.id}/subnets/${p_trainingSubnetName}'
-    computeSubnetId: '${vnet.outputs.id}/subnets/${p_trainingSubnetName}'
-    aksSubnetId: '${vnet.outputs.id}/subnets/${p_scoringSubnetName}'
-    virtualNetworkId: vnet.outputs.id
-    machineLearningPleName: 'ple-${p_name}-${p_uniqueSuffix}-mlw'
+    p_subnetId: '${vnet.outputs.id}/subnets/${p_trainingSubnetName}'
+    p_computeSubnetId: '${vnet.outputs.id}/subnets/${p_trainingSubnetName}'
+    p_aksSubnetId: '${vnet.outputs.id}/subnets/${p_scoringSubnetName}'
+    p_virtualNetworkId: vnet.outputs.id
+    p_machineLearningPleName: 'ple-${v_name}-${v_uniqueSuffix}-mlw'
 
     // compute
-    amlComputePublicIp: p_amlComputePublicIp
-    mlAksName: 'aks-${p_name}-${p_uniqueSuffix}'
-    vmSizeParam: p_amlComputeDefaultVmSize
+    p_amlComputePublicIp: p_amlComputePublicIp
+    p_mlAksName: 'aks-${v_name}-${v_uniqueSuffix}'
+    p_vmSizeParam: p_amlComputeDefaultVmSize
   }
   dependsOn: [
     keyvault

@@ -19,6 +19,9 @@ param p_virtualNetworkId string
 @description('Enable soft-delete')
 param p_enableSoftDelete bool = false
 
+@description('Managed identity name')
+param p_managedIdentityName string
+
 var privateDnsZoneName = 'privatelink${environment().suffixes.keyvaultDns}'
 
 resource keyVault 'Microsoft.KeyVault/vaults@2021-10-01' = {
@@ -98,4 +101,44 @@ resource keyVaultPrivateDnsZoneVnetLink 'Microsoft.Network/privateDnsZones/virtu
   }
 }
 
+resource identity 'Microsoft.ManagedIdentity/identities@2023-07-31-preview' existing = {
+  name: p_managedIdentityName
+}
+
+resource accessPolicy 'Microsoft.KeyVault/vaults/accessPolicies@2019-09-01' = {
+  name: 'add'
+  parent: keyVault
+  properties: {
+    accessPolicies: [
+      {
+        tenantId: subscription().tenantId
+        objectId: identity.properties.principalId
+        permissions: {
+          keys: [
+            'get'
+            'unwrapKey'
+            'wrapKey'
+          ]
+        }
+      }
+    ]
+  }
+} 
+
+var cmkKeyName = '${uniqueString(keyVault.id)}${uniqueString(subscription().id)}'
+resource key 'Microsoft.KeyVault/vaults/keys@2021-06-01-preview' = {
+  name: '${uniqueString(keyVault.id)}${cmkKeyName}'
+  parent: keyVault
+  properties: {
+    keySize: 2048
+    kty: 'RSA'
+    keyOps: [
+      'unwrapKey'
+      'wrapKey'
+    ]
+  }
+}
+
 output keyvaultId string = keyVault.id
+output keyvaultName string = keyVault.name
+output cmkKeyName string = cmkKeyName

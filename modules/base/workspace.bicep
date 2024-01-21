@@ -89,6 +89,7 @@ module machineLearningPrivateEndpoint '../network/amlendpoints.bicep' = {
   }
 }
 
+/**
 module machineLearningCompute '../compute/amlcompute.bicep' = {
   name: 'machineLearningComputes'
   scope: resourceGroup()
@@ -107,5 +108,5 @@ module machineLearningCompute '../compute/amlcompute.bicep' = {
     machineLearningPrivateEndpoint
   ]
 }
-
+*/
 output machineLearningId string = machineLearning.id

@@ -16,6 +16,15 @@ param p_storagePleFileName string
 @description('Resource ID of the subnet')
 param p_subnetId string
 
+@description('Managed identity name')
+param p_managedIdentityName string 
+
+@description('Key Vault name')
+param p_keyVaultName string 
+
+@description('CMK name for storage key')
+param p_cmkKeyName string
+
 @description('Resource ID of the virtual network')
 param p_virtualNetworkId string
 
@@ -39,6 +48,14 @@ var blobPrivateDnsZoneName = 'privatelink.blob.${environment().suffixes.storage}
 
 var filePrivateDnsZoneName = 'privatelink.file.${environment().suffixes.storage}'
 
+resource identity 'Microsoft.ManagedIdentity/identities@2023-07-31-preview' existing = {
+  name: p_managedIdentityName
+}
+
+resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
+  name: p_keyVaultName
+}
+
 resource storage 'Microsoft.Storage/storageAccounts@2021-09-01' = {
   name: storageNameCleaned
   location: location
@@ -53,8 +70,16 @@ resource storage 'Microsoft.Storage/storageAccounts@2021-09-01' = {
     allowCrossTenantReplication: false
     allowSharedKeyAccess: true
     encryption: {
-      keySource: 'Microsoft.Storage'
-      requireInfrastructureEncryption: false
+      keySource: 'Microsoft.Keyvault'
+      keyvaultproperties: {
+        keyname: p_cmkKeyName
+        keyvaulturi: keyVault.properties.vaultUri
+      }
+      requireInfrastructureEncryption: true
+      identity: {
+        // specify which identity to use
+        userAssignedIdentity: identity.id
+      }
       services: {
         blob: {
           enabled: true
@@ -79,7 +104,7 @@ resource storage 'Microsoft.Storage/storageAccounts@2021-09-01' = {
     keyPolicy: {
       keyExpirationPeriodInDays: 7
     }
-    largeFileSharesState: 'Disabled'
+    largeFileSharesState: 'Enabled'
     minimumTlsVersion: 'TLS1_2'
     networkAcls: {
       bypass: 'AzureServices'
