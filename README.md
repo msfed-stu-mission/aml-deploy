@@ -1,4 +1,4 @@
-# Azure Machine Learning: Secure Workspace Deployment
+# Secure Azure Machine Learning Deployment Accelerator
 
 ![Bicep Version](https://azurequickstartsservice.blob.core.windows.net/badges/quickstarts/microsoft.machinelearningservices/machine-learning-end-to-end-secure/BicepVersion.svg)
 
@@ -6,9 +6,30 @@
 [![Deploy To Azure US Gov](https://raw.githubusercontent.com/Azure/azure-quickstart-templates/master/1-CONTRIBUTION-GUIDE/images/deploytoazuregov.svg?sanitize=true)](https://portal.azure.us/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FAzure%2Fazure-quickstart-templates%2Fmaster%2Fquickstarts%2Fmicrosoft.machinelearningservices%2Fmachine-learning-end-to-end-secure%2Fazuredeploy.json)
 [![Visualize](https://raw.githubusercontent.com/Azure/azure-quickstart-templates/master/1-CONTRIBUTION-GUIDE/images/visualizebutton.svg?sanitize=true)](http://armviz.io/#/?load=https%3A%2F%2Fraw.githubusercontent.com%2FAzure%2Fazure-quickstart-templates%2Fmaster%2Fquickstarts%2Fmicrosoft.machinelearningservices%2Fmachine-learning-end-to-end-secure%2Fazuredeploy.json)
 
-This package provides an out-of-the-box secure deployment of Azure Machine Learning, along with auxiliary resources required for a production-grade workspace instantiation.
+The Secure Azure Machine Learning Accelerator provides an out-of-the-box secure deployment of Azure Machine Learning, along with auxiliary resources required for a production-grade workspace instantiation.
 
 This reference implementation includes features such as network isolation, customer-managed key setup, auto-cluster provisioning, and optionally attaching to separate AKS clusters or Synapse Spark Pools.
+
+## Getting Started
+
+### Prerequisites
+
+These template scripts will deploy several resources into your Azure environment. Prior to attempting deployment, certain pre-reqs must be completed. Please ensure these items are done before continuing on to the deployment section of this guide:
+
+To get started with deployment, you will need the following:
+
+>- An active Azure Subscription - e.g., Azure commercial, Azure US Gov
+>- Administrative rights on the Azure Subscription
+>- An existing resource group in which to deploy the Azure ML workspace & resources
+>- Contributer and Key Vault Administrator roles at the resource group level
+
+You can sign up for an Azure subscription [here](https://azure.microsoft.com/en-us/free/)
+
+### Securely Deploying Azure ML
+
+The Secure Azure Machine Learning Accelerator can be deployed to Azure or Azure US Gov using the single-click deployment buttons at the top of this page. These will automatically deploy an network-isolated Azure ML workspace and configure all features.
+
+Alternatively, this repository may be cloned and modified if desired. The `deploy.bicep` template at the root directory of this accelerator is intended to be an example arrangement of the underlying bicep modules found in the `modules` directory. These modules are designed to be reusable and may be arranged as needed.
 
 ## Resources
 

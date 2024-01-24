@@ -18,12 +18,6 @@ param p_trainingSubnetPrefix string = '192.168.0.0/24'
 @description('Scoring subnet address prefix')
 param p_scoringSubnetPrefix string = '192.168.1.0/24'
 
-@description('Bastion subnet address prefix')
-param p_azureBastionSubnetPrefix string = '192.168.250.0/27'
-
-@description('Deploy a Bastion jumphost to access the network-isolated environment?')
-param p_deployJumphost bool = true
-
 @description('Enable public IP for Azure Machine Learning compute nodes')
 param p_amlComputePublicIp bool = true
 
@@ -38,14 +32,6 @@ param p_scoringSubnetName string = 'SNET-Score'
 
 @description('Name of the user-managed identity')
 param p_managedIdentityName string = 'aml-umi'
-
-@description('Jumphost virtual machine username')
-param p_jumpboxUsername string
-
-@secure()
-@minLength(8)
-@description('Jumphost virtual machine password')
-param p_jumpboxPassword string
 
 // Variables
 var v_name = toLower('${prefix}')
@@ -173,26 +159,4 @@ module azuremlWorkspace 'modules/base/workspace.bicep' = {
     applicationInsights
     storage
   ]
-}
-
-module dsvm 'modules/jumpbox/jumpbox.bicep' = {
-  name: 'jumpbox-${v_name}-${v_uniqueSuffix}-deployment'
-  params: {
-    location: location
-    p_virtualMachineName: 'vm-${v_name}-${v_uniqueSuffix}'
-    p_subnetId: '${vnet.outputs.id}/subnets/${p_trainingSubnetName}'
-    p_adminUsername: p_jumpboxUsername
-    p_adminPassword: p_jumpboxPassword
-    p_networkSecurityGroupId: nsg.outputs.networkSecurityGroup
-    p_vmSizeParameter: p_amlComputeDefaultVmSize
-  }
-}
-
-module bastion 'modules/jumpbox/bastion.bicep' = {
-  name: 'bastion-${v_name}-${v_uniqueSuffix}-deployment'
-  params: {
-    p_vnetName: vnet.outputs.name 
-    location: location
-    tags: tags
-  }
 }
