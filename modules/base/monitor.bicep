@@ -10,15 +10,26 @@ param p_applicationInsightsName string
 @description('Log Analytics resource name')
 param p_logAnalyticsWorkspaceName string 
 
-resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2021-06-01' = {
+@description('Name of the user-managed identity')
+param p_managedIdentityName string 
+
+resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
   name: p_logAnalyticsWorkspaceName
   location: location
+  tags: tags
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '/subscriptions/${subscription().subscriptionId}/resourceGroups/${resourceGroup().name}/providers/Microsoft.ManagedIdentity/userAssignedIdentities/${p_managedIdentityName}': {}
+    }
+  }
   properties: {
     sku: {
       name: 'PerGB2018'
     }
+    forceCmkForQuery: true
     retentionInDays: 30
-    publicNetworkAccessForIngestion: 'Enabled'
+    publicNetworkAccessForIngestion: 'Disabled'
     publicNetworkAccessForQuery: 'Disabled'
   }
 }
@@ -36,3 +47,4 @@ resource applicationInsights 'Microsoft.Insights/components@2020-02-02' = {
 }
 
 output applicationInsightsId string = applicationInsights.id
+output logAnalyticsWorkspaceId string = logAnalyticsWorkspace.id

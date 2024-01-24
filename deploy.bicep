@@ -90,7 +90,7 @@ module keyvault 'modules/base/vault.bicep' = {
   }
 }
 
-module storage 'modules/base/storage.bicep' = {
+module storage 'modules/storage/storage.bicep' = {
   name: 'st${v_name}${v_uniqueSuffix}-deployment'
   params: {
     location: location
@@ -125,6 +125,7 @@ module applicationInsights 'modules/base/monitor.bicep' = {
     location: location
     p_applicationInsightsName: 'appi-${v_name}-${v_uniqueSuffix}'
     p_logAnalyticsWorkspaceName: 'ws-${v_name}-${v_uniqueSuffix}'
+    p_managedIdentityName: managedIdentity.outputs.managedIdentityName
     tags: tags
   }
 }

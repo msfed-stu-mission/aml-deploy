@@ -48,15 +48,14 @@ var blobPrivateDnsZoneName = 'privatelink.blob.${environment().suffixes.storage}
 
 var filePrivateDnsZoneName = 'privatelink.file.${environment().suffixes.storage}'
 
-resource identity 'Microsoft.ManagedIdentity/identities@2023-07-31-preview' existing = {
-  name: p_managedIdentityName
-}
-
 resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
   name: p_keyVaultName
 }
 
-resource storage 'Microsoft.Storage/storageAccounts@2021-09-01' = {
+resource identity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-07-31-preview' existing = {
+  name: p_managedIdentityName
+}
+resource storage 'Microsoft.Storage/storageAccounts@2023-01-01' = {
   name: storageNameCleaned
   location: location
   tags: tags
@@ -64,22 +63,24 @@ resource storage 'Microsoft.Storage/storageAccounts@2021-09-01' = {
     name: storageSkuName
   }
   kind: 'StorageV2'
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+     '${identity.id}': {}
+    }
+  }
   properties: {
-    accessTier: 'Hot'
-    allowBlobPublicAccess: false
-    allowCrossTenantReplication: false
-    allowSharedKeyAccess: true
     encryption: {
       keySource: 'Microsoft.Keyvault'
+      identity: {
+        userAssignedIdentity: identity.id
+      }
       keyvaultproperties: {
         keyname: p_cmkKeyName
         keyvaulturi: keyVault.properties.vaultUri
+        keyversion: null
       }
       requireInfrastructureEncryption: true
-      identity: {
-        // specify which identity to use
-        userAssignedIdentity: identity.id
-      }
       services: {
         blob: {
           enabled: true
@@ -99,6 +100,10 @@ resource storage 'Microsoft.Storage/storageAccounts@2021-09-01' = {
         }
       }
     }
+    accessTier: 'Hot'
+    allowBlobPublicAccess: false
+    allowCrossTenantReplication: false
+    allowSharedKeyAccess: true
     isHnsEnabled: false
     isNfsV3Enabled: false
     keyPolicy: {
@@ -167,6 +172,7 @@ resource storagePrivateEndpointFile 'Microsoft.Network/privateEndpoints@2022-01-
     }
   }
 }
+
 
 resource blobPrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
   name: blobPrivateDnsZoneName

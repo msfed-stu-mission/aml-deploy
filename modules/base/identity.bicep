@@ -14,4 +14,3 @@ resource identity 'Microsoft.ManagedIdentity/userAssignedIdentities@2022-01-31-P
 }
 
 output managedIdentityName string = identity.name
-output managedIdentityId string = identity.id

@@ -32,7 +32,7 @@ resource keyVault 'Microsoft.KeyVault/vaults@2021-10-01' = {
     createMode: 'default'
     enabledForDeployment: false
     enabledForDiskEncryption: false
-    enabledForTemplateDeployment: false
+    enabledForTemplateDeployment: true
     enableSoftDelete: p_enableSoftDelete
     enableRbacAuthorization: true
     enablePurgeProtection: true
@@ -49,10 +49,9 @@ resource keyVault 'Microsoft.KeyVault/vaults@2021-10-01' = {
   }
 }
 
-resource keyVaultPrivateEndpoint 'Microsoft.Network/privateEndpoints@2022-01-01' = {
+resource keyVaultPrivateEndpoint 'Microsoft.Network/privateEndpoints@2021-02-01' = {
   name: p_keyvaultPleName
   location: location
-  tags: tags
   properties: {
     privateLinkServiceConnections: [
       {
@@ -62,6 +61,11 @@ resource keyVaultPrivateEndpoint 'Microsoft.Network/privateEndpoints@2022-01-01'
             'vault'
           ]
           privateLinkServiceId: keyVault.id
+          privateLinkServiceConnectionState: {
+            status: 'Approved'
+            description: 'Auto-Approved'
+            actionsRequired: 'None'
+          }
         }
       }
     ]
@@ -101,8 +105,21 @@ resource keyVaultPrivateDnsZoneVnetLink 'Microsoft.Network/privateDnsZones/virtu
   }
 }
 
-resource identity 'Microsoft.ManagedIdentity/identities@2023-07-31-preview' existing = {
+resource identity 'Microsoft.ManagedIdentity/userAssignedIdentities@2022-01-31-PREVIEW' existing = {
   name: p_managedIdentityName
+}
+
+resource keyVaultOfficerRoleDefinition 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
+  scope: subscription()
+  name: '00482a5a-887f-4fb3-b363-3b7fe8e74483'
+}
+
+resource roleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
+  name: guid('grant-vault-access', identity.id, keyVault.id)
+  properties: {
+    roleDefinitionId: keyVaultOfficerRoleDefinition.id
+    principalId: identity.properties.principalId
+  }
 }
 
 resource accessPolicy 'Microsoft.KeyVault/vaults/accessPolicies@2019-09-01' = {
@@ -141,4 +158,4 @@ resource key 'Microsoft.KeyVault/vaults/keys@2021-06-01-preview' = {
 
 output keyvaultId string = keyVault.id
 output keyvaultName string = keyVault.name
-output cmkKeyName string = cmkKeyName
+output cmkKeyName string = key.name
